@@ -12,17 +12,17 @@ let readFile (filePath:String) = seq {
 
 let parseLine (s:String) =
     let foodAndContains : String[] = s.Split ('(')
-    let foods = foodAndContains.[0].Split ' '
+    let ingredients = foodAndContains.[0].Trim().Split ' '
     let containsString : String = foodAndContains.[1]
     let containsString = containsString.[8..containsString.Length-2]
     let contains = containsString.Split ','
                    |> Array.map (fun (item:String) -> item.Trim())
                    
-    Input (foods,contains)
+    Food (ingredients,contains)
    
     
 
-let readInput (filePath: String) : Input[] =
+let readInput (filePath: String) : Food[] =
     let lines = readFile filePath
-    let inputs = lines |> Seq.map parseLine |> Seq.toArray 
-    inputs 
+    let foods = lines |> Seq.map parseLine |> Seq.toArray 
+    foods 
