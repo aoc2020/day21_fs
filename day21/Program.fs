@@ -34,7 +34,7 @@ type AllergeneCanBeIn (name:String, ingredients: String[]) as self =
         let acc (a:AllergeneCanBeIn) (food:Food) = a.filterIngredientsByFood food
         foods |> Seq.fold acc self 
 
-let task1 (foods:Food[]) =
+let task1 (foods:Food[]) : AllergeneCanBeIn[] =
     let ingredients = allIngredients foods
     let allergenes = allAllergenes foods
     let allergenes = allergenes |> Array.map (fun a -> AllergeneCanBeIn(a,ingredients))
@@ -58,14 +58,67 @@ let task1 (foods:Food[]) =
                                          |> Seq.filter (fun (food:Food) -> food.Ingredients |> Seq.contains safe)
                                          |> Seq.length)
         |> Seq.sum
-    printfn "Safe occurences: %A" safeOcc 
-        
+    printfn "Safe occurences: %A" safeOcc
+    allergenes
+
+    
+type AllergeneState (allergenes:AllergeneCanBeIn[],map:Map<String,String>) as self =
+    override this.ToString () = sprintf "AllergenState(%A found: %A" allergenes map
+    member this.Resolved = allergenes.Length = 0
+    member this.Allergenes = allergenes
+    member this.Map = map
+//    member this.findSingleAllergene () =
+//        allergenes
+//        |> Seq.filter (fun (a:AllergeneCanBeIn) -> (a.Ingredients.Length = 1))
+//        |> Seq.head // if no found, it crashes, but meh
+    member this.updateForAllergene (a:AllergeneCanBeIn) =
+        let rmIngredient (toRm:String) (a:AllergeneCanBeIn)  =
+            let newIng = a.Ingredients |> Array.filter (fun (i:String) -> i <> toRm)
+            AllergeneCanBeIn(a.Name,newIng)
+        if a.Ingredients.Length = 1 then
+            let name = a.Name
+            let value = a.Ingredients.[0]
+            let newMap = map.Add (name,value)
+            let newAllergenes = allergenes
+                                |> Seq.filter (fun (a:AllergeneCanBeIn) -> a.Name <> name)
+                                |> Seq.map (rmIngredient value)
+                                |> Seq.toArray 
+            AllergeneState(newAllergenes,newMap)
+        else
+            self
+    member this.scanAndUpdate () : AllergeneState =
+        let acc (state:AllergeneState) (a:AllergeneCanBeIn) : AllergeneState= state.updateForAllergene a             
+        allergenes
+        |> Seq.fold acc self
+    member this.resolve () : AllergeneState =
+        if this.Resolved then self
+        else this.scanAndUpdate().resolve()
+    
+let sortAllergenes (map:Map<String,String>) =
+    map
+    |> Map.toSeq
+    |> Seq.sortBy (fst)
+    |> Seq.map (snd)
+    |> String.concat ","   
+    
+let task2 (allergenes:AllergeneCanBeIn[]) =
+    let state : AllergeneState = AllergeneState(allergenes,Map.empty)
+    printfn "State0 %A" state 
+    let state = state.scanAndUpdate () 
+    printfn "State1 %A" state
+    let state = state.resolve ()
+    printfn "StateN %A" state
+    let sorted = sortAllergenes state.Map
+    printfn "Sorted: %s" sorted 
+    
+    
 
 [<EntryPoint>]
 let main argv =
     let foods = readInput "/Users/xeno/projects/aoc2020/day21_fs/input.txt"
     printfn "Foods: %A" foods
-    task1 foods 
+    let allergeneCandidates = task1 foods
+    task2 allergeneCandidates
     0
     
     
